@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Climate Data Platform</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            min-height: 100vh;
+        }
+        header {
+            background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%);
+            border-bottom: 1px solid #1e293b;
+            padding: 1rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        header h1 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #f1f5f9;
+        }
+        header h1 span { color: #38bdf8; }
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.8rem;
+            color: #94a3b8;
+        }
+        .status-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: #22c55e;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+        .hero {
+            text-align: center;
+            padding: 3rem 0 2rem;
+        }
+        .hero h2 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.75rem;
+            color: #f8fafc;
+        }
+        .hero p {
+            color: #94a3b8;
+            font-size: 1.1rem;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+        .stat-card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 1.25rem;
+            text-align: center;
+        }
+        .stat-card .value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #38bdf8;
+        }
+        .stat-card .label {
+            font-size: 0.85rem;
+            color: #94a3b8;
+            margin-top: 0.25rem;
+        }
+        h3 {
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+            color: #cbd5e1;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .section { margin: 2rem 0; }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1rem;
+        }
+        .card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 1.25rem;
+            transition: border-color 0.2s;
+            cursor: pointer;
+        }
+        .card:hover { border-color: #38bdf8; }
+        .card h4 {
+            font-size: 1rem;
+            color: #f1f5f9;
+            margin-bottom: 0.5rem;
+        }
+        .card p {
+            font-size: 0.85rem;
+            color: #94a3b8;
+            margin-bottom: 0.75rem;
+        }
+        .tag {
+            display: inline-block;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 4px;
+            padding: 0.15rem 0.5rem;
+            font-size: 0.75rem;
+            color: #94a3b8;
+            margin: 0.15rem 0.15rem 0.15rem 0;
+        }
+        .meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            color: #64748b;
+            margin-top: 0.75rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid #334155;
+        }
+        .arch-section {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 1.5rem;
+        }
+        .arch-diagram {
+            font-family: 'Courier New', monospace;
+            font-size: 0.8rem;
+            color: #94a3b8;
+            white-space: pre;
+            overflow-x: auto;
+            line-height: 1.4;
+            padding: 1rem 0;
+        }
+        .arch-diagram .highlight { color: #38bdf8; }
+        .arch-diagram .green { color: #22c55e; }
+        .arch-diagram .yellow { color: #fbbf24; }
+        .tech-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+        .tech-table th, .tech-table td {
+            text-align: left;
+            padding: 0.6rem 1rem;
+            border-bottom: 1px solid #334155;
+            font-size: 0.85rem;
+        }
+        .tech-table th {
+            color: #94a3b8;
+            font-weight: 500;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .tech-table td { color: #cbd5e1; }
+        .tech-table tr:hover td { color: #f1f5f9; }
+        .detail-panel {
+            display: none;
+            background: #1e293b;
+            border: 1px solid #38bdf8;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+        }
+        .detail-panel.open { display: block; }
+        .detail-panel h4 { color: #38bdf8; margin-bottom: 0.75rem; }
+        .detail-panel .close-btn {
+            float: right;
+            background: none;
+            border: 1px solid #475569;
+            color: #94a3b8;
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+        .detail-panel .close-btn:hover {
+            border-color: #94a3b8;
+            color: #f1f5f9;
+        }
+        .detail-grid {
+            display: grid;
+            grid-template-columns: 140px 1fr;
+            gap: 0.4rem 1rem;
+            font-size: 0.85rem;
+        }
+        .detail-grid dt { color: #64748b; }
+        .detail-grid dd { color: #e2e8f0; }
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #64748b;
+        }
+        footer {
+            text-align: center;
+            padding: 2rem;
+            color: #475569;
+            font-size: 0.8rem;
+            border-top: 1px solid #1e293b;
+            margin-top: 3rem;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1><span>&#9670;</span> Climate Data Platform</h1>
+        <div class="status-badge">
+            <div class="status-dot" id="statusDot"></div>
+            <span id="statusText">Connecting...</span>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="hero">
+            <h2>Climate &amp; Satellite Data Access</h2>
+            <p>Unified platform for accessing reanalysis, atmospheric composition, and satellite observation datasets via Kubernetes-orchestrated microservices.</p>
+        </div>
+
+        <div class="stats">
+            <div class="stat-card">
+                <div class="value" id="datasetCount">-</div>
+                <div class="label">Available Datasets</div>
+            </div>
+            <div class="stat-card">
+                <div class="value" id="variableCount">-</div>
+                <div class="label">Variables</div>
+            </div>
+            <div class="stat-card">
+                <div class="value">3</div>
+                <div class="label">Microservices</div>
+            </div>
+            <div class="stat-card">
+                <div class="value">K8s</div>
+                <div class="label">Orchestration</div>
+            </div>
+        </div>
+
+        <div id="detailPanel" class="detail-panel"></div>
+
+        <div class="section">
+            <h3>Datasets</h3>
+            <div class="grid" id="datasets">
+                <div class="loading">Loading datasets from API...</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>Architecture</h3>
+            <div class="arch-section">
+                <div class="arch-diagram"><span class="highlight">                         ┌────────────┐</span>
+<span class="highlight">                         │  Ingress   │</span>
+<span class="highlight">                         │  (TLS)     │</span>
+<span class="highlight">                         └─────┬──────┘</span>
+                               │
+                 ┌─────────────┼─────────────┐
+                 │                           │
+          <span class="green">┌──────┴──────┐</span>          <span class="green">┌──────┴──────┐</span>
+          <span class="green">│  Frontend   │</span>          <span class="green">│     API     │</span>
+          <span class="green">│  React +    │</span>          <span class="green">│  FastAPI    │</span>
+          <span class="green">│  nginx      │</span>          <span class="green">│  (x1-3)     │</span>
+          <span class="green">└─────────────┘</span>          <span class="green">└──────┬──────┘</span>
+                                            │
+                              ┌─────────────┼─────────────┐
+                              │                           │
+                       <span class="yellow">┌──────┴──────┐</span>          <span class="yellow">┌──────┴──────┐</span>
+                       <span class="yellow">│    Redis    │</span>          <span class="yellow">│   Worker    │</span>
+                       <span class="yellow">│  (broker)   │</span>          <span class="yellow">│  Celery     │</span>
+                       <span class="yellow">└─────────────┘</span>          <span class="yellow">└──────┬──────┘</span>
+                                                        │
+                                                 ┌──────┴──────┐
+                                                 │     PVC     │
+                                                 │  (storage)  │
+                                                 └─────────────┘</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>Technology Stack</h3>
+            <div class="arch-section">
+                <table class="tech-table">
+                    <thead>
+                        <tr><th>Component</th><th>Technology</th><th>Purpose</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>API</td><td>Python 3.11 / FastAPI</td><td>REST endpoints, data access</td></tr>
+                        <tr><td>Frontend</td><td>React 18 / nginx</td><td>User interface, visualisation</td></tr>
+                        <tr><td>Worker</td><td>Python 3.11 / Celery</td><td>Async data processing pipeline</td></tr>
+                        <tr><td>Broker</td><td>Redis 7</td><td>Task queue, caching</td></tr>
+                        <tr><td>Orchestration</td><td>Kubernetes 1.28+</td><td>Container orchestration</td></tr>
+                        <tr><td>Packaging</td><td>Helm 3</td><td>Deployment templating</td></tr>
+                        <tr><td>CI/CD</td><td>GitHub Actions</td><td>Build, lint, deploy</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <footer>Climate Data Platform &mdash; FIRA Software Ltd</footer>
+
+    <script>
+        async function checkStatus() {
+            try {
+                const res = await fetch('/api/v1/status');
+                if (res.ok) {
+                    document.getElementById('statusDot').style.background = '#22c55e';
+                    document.getElementById('statusText').textContent = 'All systems operational';
+                }
+            } catch {
+                document.getElementById('statusDot').style.background = '#f59e0b';
+                document.getElementById('statusText').textContent = 'API unreachable';
+            }
+        }
+
+        async function loadDatasets() {
+            const container = document.getElementById('datasets');
+            try {
+                const res = await fetch('/api/v1/datasets');
+                const data = await res.json();
+                const datasets = data.datasets;
+
+                document.getElementById('datasetCount').textContent = datasets.length;
+
+                let totalVars = 0;
+                datasets.forEach(d => { totalVars += (d.variables || []).length; });
+                document.getElementById('variableCount').textContent = totalVars;
+
+                container.innerHTML = datasets.map(d => `
+                    <div class="card" onclick="showDetail('${d.id}')">
+                        <h4>${d.name}</h4>
+                        <p>${d.temporal_range} &middot; ${d.resolution}</p>
+                        <div>${(d.variables || []).slice(0, 4).map(v =>
+                            `<span class="tag">${v}</span>`
+                        ).join('')}${(d.variables || []).length > 4 ? `<span class="tag">+${d.variables.length - 4}</span>` : ''}</div>
+                        <div class="meta">
+                            <span>${d.resolution} resolution</span>
+                            <span>${(d.variables || []).length} variables</span>
+                        </div>
+                    </div>
+                `).join('');
+            } catch {
+                container.innerHTML = '<div class="loading">Could not load datasets from API</div>';
+            }
+        }
+
+        async function showDetail(id) {
+            const panel = document.getElementById('detailPanel');
+            try {
+                const res = await fetch(`/api/v1/datasets/${id}`);
+                const d = await res.json();
+                panel.innerHTML = `
+                    <button class="close-btn" onclick="document.getElementById('detailPanel').classList.remove('open')">Close</button>
+                    <h4>${d.name}</h4>
+                    <p style="color:#94a3b8;margin-bottom:1rem;font-size:0.9rem">${d.description || ''}</p>
+                    <dl class="detail-grid">
+                        <dt>ID</dt><dd>${d.id}</dd>
+                        <dt>Resolution</dt><dd>${d.resolution}</dd>
+                        <dt>Time Range</dt><dd>${d.temporal_range}</dd>
+                        <dt>Format</dt><dd>${d.format || 'NetCDF / GRIB'}</dd>
+                        <dt>Updates</dt><dd>${d.update_frequency || 'N/A'}</dd>
+                        <dt>Variables</dt><dd>${(d.variables || []).join(', ')}</dd>
+                        ${d.pressure_levels ? `<dt>Pressure Levels</dt><dd>${d.pressure_levels.join(', ')} hPa</dd>` : ''}
+                    </dl>
+                `;
+                panel.classList.add('open');
+                panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            } catch {
+                panel.innerHTML = '<p>Could not load dataset details</p>';
+                panel.classList.add('open');
+            }
+        }
+
+        checkStatus();
+        loadDatasets();
+    </script>
+</body>
+</html>
