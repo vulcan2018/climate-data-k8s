@@ -1,0 +1,60 @@
+name: Helm Lint & Validate
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'helm/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'helm/**'
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: v3.13.0
+
+      - name: Lint chart
+        run: helm lint helm/climate-stack
+
+      - name: Template with dev values
+        run: |
+          helm template climate-stack helm/climate-stack \
+            -f helm/climate-stack/values-dev.yaml \
+            --debug
+
+      - name: Template with prod values
+        run: |
+          helm template climate-stack helm/climate-stack \
+            -f helm/climate-stack/values-prod.yaml \
+            --debug
+
+      - name: Validate YAML syntax
+        run: |
+          pip install pyyaml
+          python3 -c "
+          import yaml, glob, sys
+          errors = []
+          for f in glob.glob('helm/**/*.yaml', recursive=True):
+              if '/templates/' in f:
+                  continue  # Skip Go templates
+              try:
+                  with open(f) as fh:
+                      yaml.safe_load(fh)
+              except Exception as e:
+                  errors.append(f'{f}: {e}')
+          if errors:
+              print('YAML validation errors:')
+              for e in errors:
+                  print(f'  {e}')
+              sys.exit(1)
+          print('All YAML files valid')
+          "

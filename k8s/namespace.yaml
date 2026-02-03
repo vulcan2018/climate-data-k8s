@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: climate
+  labels:
+    app.kubernetes.io/name: climate-data-platform
+    app.kubernetes.io/managed-by: kubectl

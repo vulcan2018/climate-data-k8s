@@ -1,0 +1,116 @@
+# Default values for climate-stack
+
+global:
+  imageRegistry: ""
+  imagePullSecrets: []
+
+api:
+  replicaCount: 2
+  image:
+    repository: climate-api
+    tag: latest
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 8000
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  autoscaling:
+    enabled: false
+    minReplicas: 2
+    maxReplicas: 6
+    targetCPUUtilization: 70
+    targetMemoryUtilization: 80
+  env:
+    REDIS_URL: redis://climate-stack-redis:6379/0
+    CORS_ORIGINS: "*"
+
+frontend:
+  replicaCount: 2
+  image:
+    repository: climate-frontend
+    tag: latest
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 80
+    targetPort: 8080
+  resources:
+    requests:
+      cpu: 100m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+worker:
+  replicaCount: 2
+  image:
+    repository: climate-worker
+    tag: latest
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+  env:
+    REDIS_URL: redis://climate-stack-redis:6379/0
+    CELERY_CONCURRENCY: "2"
+
+redis:
+  enabled: true
+  image:
+    repository: redis
+    tag: 7-alpine
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+  storage:
+    size: 1Gi
+    storageClass: ""
+
+ingress:
+  enabled: false
+  className: nginx
+  annotations: {}
+  hosts:
+    - host: climate.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+          service: frontend
+        - path: /api
+          pathType: Prefix
+          service: api
+  tls: []
+
+networkPolicy:
+  enabled: true
+
+persistence:
+  enabled: true
+  storageClass: ""
+  size: 10Gi
+  accessMode: ReadWriteOnce
+
+configMap:
+  LOG_LEVEL: info
+  DATA_DIR: /data
+  MAX_WORKERS: "4"
+
+secrets:
+  API_KEY: ""
+  DB_PASSWORD: ""

@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Climate Data Platform</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 0; padding: 2rem; background: #f5f7fa; }
+        .container { max-width: 800px; margin: 0 auto; }
+        h1 { color: #1a365d; }
+        .card { background: white; border-radius: 8px; padding: 1.5rem; margin: 1rem 0; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .status { color: #38a169; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Climate Data Platform</h1>
+        <div class="card">
+            <h2>Climate Data Access</h2>
+            <p>Status: <span class="status">Online</span></p>
+            <p>Access ERA5 reanalysis, CAMS atmospheric composition, and seasonal forecast datasets.</p>
+        </div>
+        <div class="card">
+            <h2>Available Datasets</h2>
+            <ul>
+                <li>ERA5 Pressure Levels (0.25&deg; resolution)</li>
+                <li>ERA5 Single Levels (0.25&deg; resolution)</li>
+                <li>CAMS Global Reanalysis (0.75&deg; resolution)</li>
+            </ul>
+        </div>
+        <div id="root"></div>
+    </div>
+</body>
+</html>

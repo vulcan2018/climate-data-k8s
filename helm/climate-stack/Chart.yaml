@@ -1,0 +1,14 @@
+apiVersion: v2
+name: climate-stack
+description: Helm chart for the Climate Data Platform
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - climate
+  - satellite
+  - data-platform
+  - kubernetes
+maintainers:
+  - name: FIRA Software Ltd
+    url: https://firasoftware.com
