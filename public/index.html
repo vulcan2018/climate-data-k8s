@@ -4,392 +4,724 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Climate Data Platform</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: #0f172a;
             color: #e2e8f0;
-            min-height: 100vh;
+            overflow: hidden;
         }
-        header {
-            background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%);
+        #map {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            z-index: 1;
+        }
+
+        /* Sidebar */
+        #sidebar {
+            position: absolute;
+            top: 0; left: 0; bottom: 0;
+            width: 340px;
+            background: rgba(15, 23, 42, 0.95);
+            border-right: 1px solid #1e293b;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            transition: transform 0.3s ease;
+        }
+        #sidebar.collapsed {
+            transform: translateX(-340px);
+        }
+        #sidebar-toggle {
+            position: absolute;
+            top: 10px;
+            left: 350px;
+            z-index: 1001;
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid #334155;
+            color: #94a3b8;
+            width: 32px;
+            height: 32px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: left 0.3s ease;
+        }
+        #sidebar.collapsed ~ #sidebar-toggle { left: 10px; }
+        #sidebar-toggle:hover { color: #f1f5f9; border-color: #64748b; }
+
+        .sidebar-header {
+            padding: 16px 20px;
             border-bottom: 1px solid #1e293b;
-            padding: 1rem 2rem;
             display: flex;
             align-items: center;
             justify-content: space-between;
         }
-        header h1 {
-            font-size: 1.25rem;
+        .sidebar-header h1 {
+            font-size: 1rem;
             font-weight: 600;
             color: #f1f5f9;
         }
-        header h1 span { color: #38bdf8; }
+        .sidebar-header h1 span { color: #38bdf8; }
         .status-badge {
             display: flex;
             align-items: center;
-            gap: 0.5rem;
-            font-size: 0.8rem;
-            color: #94a3b8;
+            gap: 6px;
+            font-size: 0.7rem;
+            color: #64748b;
         }
         .status-dot {
-            width: 8px; height: 8px;
+            width: 7px; height: 7px;
             border-radius: 50%;
             background: #22c55e;
             animation: pulse 2s infinite;
         }
         @keyframes pulse {
             0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
+            50% { opacity: 0.4; }
         }
-        .container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
-        .hero {
-            text-align: center;
-            padding: 3rem 0 2rem;
+
+        .section {
+            padding: 14px 20px;
+            border-bottom: 1px solid #1e293b;
         }
-        .hero h2 {
-            font-size: 2rem;
-            font-weight: 700;
-            margin-bottom: 0.75rem;
-            color: #f8fafc;
+        .section-title {
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #64748b;
+            margin-bottom: 10px;
         }
-        .hero p {
-            color: #94a3b8;
-            font-size: 1.1rem;
-            max-width: 600px;
-            margin: 0 auto;
-        }
-        .stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-            margin: 2rem 0;
-        }
-        .stat-card {
-            background: #1e293b;
-            border: 1px solid #334155;
-            border-radius: 8px;
-            padding: 1.25rem;
-            text-align: center;
-        }
-        .stat-card .value {
-            font-size: 2rem;
-            font-weight: 700;
-            color: #38bdf8;
-        }
-        .stat-card .label {
-            font-size: 0.85rem;
-            color: #94a3b8;
-            margin-top: 0.25rem;
-        }
-        h3 {
-            font-size: 1.1rem;
-            margin-bottom: 1rem;
-            color: #cbd5e1;
+
+        /* Layer toggles */
+        .layer-item {
             display: flex;
             align-items: center;
-            gap: 0.5rem;
+            gap: 10px;
+            padding: 6px 0;
         }
-        .section { margin: 2rem 0; }
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 1rem;
+        .layer-item label {
+            font-size: 0.85rem;
+            color: #cbd5e1;
+            cursor: pointer;
+            flex: 1;
         }
-        .card {
-            background: #1e293b;
-            border: 1px solid #334155;
-            border-radius: 8px;
-            padding: 1.25rem;
-            transition: border-color 0.2s;
+        .layer-item input[type="checkbox"] {
+            accent-color: #38bdf8;
+            width: 16px;
+            height: 16px;
             cursor: pointer;
         }
-        .card:hover { border-color: #38bdf8; }
-        .card h4 {
-            font-size: 1rem;
-            color: #f1f5f9;
-            margin-bottom: 0.5rem;
+        .layer-desc {
+            font-size: 0.72rem;
+            color: #475569;
+            padding-left: 26px;
+            margin-top: -2px;
+            margin-bottom: 4px;
         }
-        .card p {
-            font-size: 0.85rem;
-            color: #94a3b8;
-            margin-bottom: 0.75rem;
-        }
-        .tag {
-            display: inline-block;
-            background: #0f172a;
+
+        /* Dataset selector */
+        .dataset-select {
+            width: 100%;
+            background: #1e293b;
             border: 1px solid #334155;
+            color: #e2e8f0;
+            padding: 8px 10px;
             border-radius: 4px;
-            padding: 0.15rem 0.5rem;
-            font-size: 0.75rem;
-            color: #94a3b8;
-            margin: 0.15rem 0.15rem 0.15rem 0;
+            font-size: 0.85rem;
+            margin-bottom: 8px;
         }
-        .meta {
+        .dataset-select:focus { outline: 1px solid #38bdf8; }
+
+        .era5-toggle {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+        .era5-toggle label {
+            font-size: 0.85rem;
+            color: #cbd5e1;
+            cursor: pointer;
+        }
+
+        .opacity-control {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 6px;
+        }
+        .opacity-control label {
+            font-size: 0.75rem;
+            color: #64748b;
+            min-width: 50px;
+        }
+        .opacity-control input[type="range"] {
+            flex: 1;
+            accent-color: #38bdf8;
+        }
+
+        /* Click info panel */
+        #click-info {
+            padding: 14px 20px;
+            border-bottom: 1px solid #1e293b;
+            display: none;
+        }
+        #click-info.active { display: block; }
+        .info-row {
             display: flex;
             justify-content: space-between;
-            font-size: 0.8rem;
+            padding: 3px 0;
+            font-size: 0.82rem;
+        }
+        .info-row .info-label { color: #64748b; }
+        .info-row .info-value { color: #e2e8f0; font-variant-numeric: tabular-nums; }
+        .info-temp {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: #38bdf8;
+            margin: 6px 0;
+        }
+        .info-temp-c {
+            font-size: 0.9rem;
+            color: #94a3b8;
+            margin-bottom: 8px;
+        }
+
+        /* Color scale legend */
+        .legend {
+            margin-top: 10px;
+        }
+        .legend-bar {
+            height: 12px;
+            border-radius: 2px;
+            margin-bottom: 4px;
+        }
+        .legend-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.7rem;
             color: #64748b;
-            margin-top: 0.75rem;
-            padding-top: 0.75rem;
-            border-top: 1px solid #334155;
         }
-        .arch-section {
-            background: #1e293b;
-            border: 1px solid #334155;
-            border-radius: 8px;
-            padding: 1.5rem;
+
+        /* Sources */
+        .sources {
+            margin-top: auto;
+            padding: 14px 20px;
+            border-top: 1px solid #1e293b;
         }
-        .arch-diagram {
-            font-family: 'Courier New', monospace;
-            font-size: 0.8rem;
-            color: #94a3b8;
-            white-space: pre;
-            overflow-x: auto;
-            line-height: 1.4;
-            padding: 1rem 0;
+        .sources a {
+            display: block;
+            font-size: 0.72rem;
+            color: #475569;
+            text-decoration: none;
+            padding: 2px 0;
         }
-        .arch-diagram .highlight { color: #38bdf8; }
-        .arch-diagram .green { color: #22c55e; }
-        .arch-diagram .yellow { color: #fbbf24; }
-        .tech-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 1rem;
-        }
-        .tech-table th, .tech-table td {
-            text-align: left;
-            padding: 0.6rem 1rem;
-            border-bottom: 1px solid #334155;
-            font-size: 0.85rem;
-        }
-        .tech-table th {
-            color: #94a3b8;
-            font-weight: 500;
-            font-size: 0.75rem;
+        .sources a:hover { color: #94a3b8; }
+        .sources .source-label {
+            font-size: 0.65rem;
+            color: #334155;
             text-transform: uppercase;
             letter-spacing: 0.05em;
+            margin-bottom: 4px;
         }
-        .tech-table td { color: #cbd5e1; }
-        .tech-table tr:hover td { color: #f1f5f9; }
-        .detail-panel {
-            display: none;
-            background: #1e293b;
-            border: 1px solid #38bdf8;
-            border-radius: 8px;
-            padding: 1.5rem;
-            margin: 1rem 0;
-        }
-        .detail-panel.open { display: block; }
-        .detail-panel h4 { color: #38bdf8; margin-bottom: 0.75rem; }
-        .detail-panel .close-btn {
-            float: right;
-            background: none;
-            border: 1px solid #475569;
-            color: #94a3b8;
-            padding: 0.25rem 0.75rem;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 0.8rem;
-        }
-        .detail-panel .close-btn:hover {
-            border-color: #94a3b8;
-            color: #f1f5f9;
-        }
-        .detail-grid {
-            display: grid;
-            grid-template-columns: 140px 1fr;
-            gap: 0.4rem 1rem;
-            font-size: 0.85rem;
-        }
-        .detail-grid dt { color: #64748b; }
-        .detail-grid dd { color: #e2e8f0; }
-        .loading {
-            text-align: center;
-            padding: 2rem;
-            color: #64748b;
-        }
-        footer {
-            text-align: center;
-            padding: 2rem;
-            color: #475569;
-            font-size: 0.8rem;
+
+        .footer-brand {
+            padding: 10px 20px;
             border-top: 1px solid #1e293b;
-            margin-top: 3rem;
+            font-size: 0.7rem;
+            color: #334155;
+            text-align: center;
+        }
+
+        /* Loading overlay */
+        #loading-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: #0f172a;
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 16px;
+            transition: opacity 0.5s;
+        }
+        #loading-overlay.fade-out { opacity: 0; pointer-events: none; }
+        .loading-spinner {
+            width: 40px; height: 40px;
+            border: 3px solid #1e293b;
+            border-top-color: #38bdf8;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading-text { color: #64748b; font-size: 0.85rem; }
+
+        /* Leaflet overrides */
+        .leaflet-control-zoom { border: 1px solid #334155 !important; }
+        .leaflet-control-zoom a {
+            background: rgba(15, 23, 42, 0.9) !important;
+            color: #94a3b8 !important;
+            border-color: #334155 !important;
+        }
+        .leaflet-control-zoom a:hover {
+            background: rgba(30, 41, 59, 0.95) !important;
+            color: #f1f5f9 !important;
         }
     </style>
 </head>
 <body>
-    <header>
-        <h1><span>&#9670;</span> Climate Data Platform</h1>
-        <div class="status-badge">
-            <div class="status-dot" id="statusDot"></div>
-            <span id="statusText">Connecting...</span>
-        </div>
-    </header>
-
-    <div class="container">
-        <div class="hero">
-            <h2>Climate &amp; Satellite Data Access</h2>
-            <p>Unified platform for accessing reanalysis, atmospheric composition, and satellite observation datasets via Kubernetes-orchestrated microservices.</p>
-        </div>
-
-        <div class="stats">
-            <div class="stat-card">
-                <div class="value" id="datasetCount">-</div>
-                <div class="label">Available Datasets</div>
-            </div>
-            <div class="stat-card">
-                <div class="value" id="variableCount">-</div>
-                <div class="label">Variables</div>
-            </div>
-            <div class="stat-card">
-                <div class="value">3</div>
-                <div class="label">Microservices</div>
-            </div>
-            <div class="stat-card">
-                <div class="value">K8s</div>
-                <div class="label">Orchestration</div>
-            </div>
-        </div>
-
-        <div id="detailPanel" class="detail-panel"></div>
-
-        <div class="section">
-            <h3>Datasets</h3>
-            <div class="grid" id="datasets">
-                <div class="loading">Loading datasets from API...</div>
-            </div>
-        </div>
-
-        <div class="section">
-            <h3>Architecture</h3>
-            <div class="arch-section">
-                <div class="arch-diagram"><span class="highlight">                         ┌────────────┐</span>
-<span class="highlight">                         │  Ingress   │</span>
-<span class="highlight">                         │  (TLS)     │</span>
-<span class="highlight">                         └─────┬──────┘</span>
-                               │
-                 ┌─────────────┼─────────────┐
-                 │                           │
-          <span class="green">┌──────┴──────┐</span>          <span class="green">┌──────┴──────┐</span>
-          <span class="green">│  Frontend   │</span>          <span class="green">│     API     │</span>
-          <span class="green">│  React +    │</span>          <span class="green">│  FastAPI    │</span>
-          <span class="green">│  nginx      │</span>          <span class="green">│  (x1-3)     │</span>
-          <span class="green">└─────────────┘</span>          <span class="green">└──────┬──────┘</span>
-                                            │
-                              ┌─────────────┼─────────────┐
-                              │                           │
-                       <span class="yellow">┌──────┴──────┐</span>          <span class="yellow">┌──────┴──────┐</span>
-                       <span class="yellow">│    Redis    │</span>          <span class="yellow">│   Worker    │</span>
-                       <span class="yellow">│  (broker)   │</span>          <span class="yellow">│  Celery     │</span>
-                       <span class="yellow">└─────────────┘</span>          <span class="yellow">└──────┬──────┘</span>
-                                                        │
-                                                 ┌──────┴──────┐
-                                                 │     PVC     │
-                                                 │  (storage)  │
-                                                 └─────────────┘</div>
-            </div>
-        </div>
-
-        <div class="section">
-            <h3>Technology Stack</h3>
-            <div class="arch-section">
-                <table class="tech-table">
-                    <thead>
-                        <tr><th>Component</th><th>Technology</th><th>Purpose</th></tr>
-                    </thead>
-                    <tbody>
-                        <tr><td>API</td><td>Python 3.11 / FastAPI</td><td>REST endpoints, data access</td></tr>
-                        <tr><td>Frontend</td><td>React 18 / nginx</td><td>User interface, visualisation</td></tr>
-                        <tr><td>Worker</td><td>Python 3.11 / Celery</td><td>Async data processing pipeline</td></tr>
-                        <tr><td>Broker</td><td>Redis 7</td><td>Task queue, caching</td></tr>
-                        <tr><td>Orchestration</td><td>Kubernetes 1.28+</td><td>Container orchestration</td></tr>
-                        <tr><td>Packaging</td><td>Helm 3</td><td>Deployment templating</td></tr>
-                        <tr><td>CI/CD</td><td>GitHub Actions</td><td>Build, lint, deploy</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
+    <div id="loading-overlay">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Loading climate data...</div>
     </div>
 
-    <footer>Climate Data Platform &mdash; FIRA Software Ltd</footer>
+    <div id="map"></div>
+
+    <div id="sidebar">
+        <div class="sidebar-header">
+            <h1><span>&#9670;</span> Climate Data Platform</h1>
+            <div class="status-badge">
+                <div class="status-dot" id="statusDot"></div>
+                <span id="statusText">Live</span>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Satellite Layers (EUMETSAT WMS)</div>
+            <div id="wms-layers"></div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">ERA5 Reanalysis Data</div>
+            <div class="era5-toggle">
+                <input type="checkbox" id="era5-toggle" checked>
+                <label for="era5-toggle">Show temperature grid</label>
+            </div>
+            <select class="dataset-select" id="era5-dataset">
+                <option value="era5_t2m_20240101">January 2024 (Winter NH)</option>
+                <option value="era5_t2m_20240701">July 2024 (Summer NH)</option>
+            </select>
+            <div class="opacity-control">
+                <label>Opacity</label>
+                <input type="range" id="era5-opacity" min="0" max="100" value="70">
+            </div>
+            <div class="legend">
+                <div class="legend-bar" id="legend-bar"></div>
+                <div class="legend-labels">
+                    <span>-60&deg;C (213K)</span>
+                    <span>0&deg;C</span>
+                    <span>+45&deg;C (318K)</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="click-info">
+            <div class="section-title">Point Query</div>
+            <div class="info-temp" id="info-temp">--</div>
+            <div class="info-temp-c" id="info-temp-c"></div>
+            <div class="info-row">
+                <span class="info-label">Latitude</span>
+                <span class="info-value" id="info-lat">--</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Longitude</span>
+                <span class="info-value" id="info-lon">--</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Dataset</span>
+                <span class="info-value" id="info-dataset">--</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Grid Cell</span>
+                <span class="info-value" id="info-grid">--</span>
+            </div>
+        </div>
+
+        <div class="sources">
+            <div class="source-label">Data Sources</div>
+            <a href="https://cds.climate.copernicus.eu/" target="_blank">Copernicus Climate Data Store (ERA5)</a>
+            <a href="https://view.eumetsat.int/" target="_blank">EUMETSAT Data Viewer (Satellite WMS)</a>
+            <a href="https://www.ecmwf.int/en/forecasts/dataset/ecmwf-reanalysis-v5" target="_blank">ECMWF ERA5 Documentation</a>
+        </div>
+
+        <div class="footer-brand">Climate Data Platform &mdash; FIRA Software Ltd</div>
+    </div>
+
+    <button id="sidebar-toggle" title="Toggle sidebar">&#9776;</button>
 
     <script>
-        async function checkStatus() {
+    (function() {
+        'use strict';
+
+        // ── State ──
+        let map, era5Canvas, era5Data = null, clickMarker = null;
+        const wmsOverlays = {};
+
+        // ── Color scale for temperature (213K to 318K → -60°C to +45°C) ──
+        const T_MIN = 213, T_MAX = 318;
+        const COLOR_STOPS = [
+            [0.00, [10, 0, 60]],     // deep purple  (-60°C)
+            [0.15, [30, 50, 180]],   // blue         (-44°C)
+            [0.30, [30, 130, 200]],  // cyan-blue    (-28°C)
+            [0.42, [40, 180, 160]],  // teal         (-16°C)
+            [0.52, [80, 200, 80]],   // green        (-5°C)
+            [0.62, [180, 220, 50]],  // yellow-green (+5°C)
+            [0.72, [240, 200, 30]],  // yellow       (+16°C)
+            [0.82, [240, 140, 20]],  // orange       (+27°C)
+            [0.92, [220, 60, 30]],   // red          (+38°C)
+            [1.00, [150, 20, 20]],   // dark red     (+45°C)
+        ];
+
+        function tempToColor(kelvin) {
+            const t = Math.max(0, Math.min(1, (kelvin - T_MIN) / (T_MAX - T_MIN)));
+            for (let i = 1; i < COLOR_STOPS.length; i++) {
+                if (t <= COLOR_STOPS[i][0]) {
+                    const [t0, c0] = COLOR_STOPS[i - 1];
+                    const [t1, c1] = COLOR_STOPS[i];
+                    const f = (t - t0) / (t1 - t0);
+                    return [
+                        Math.round(c0[0] + (c1[0] - c0[0]) * f),
+                        Math.round(c0[1] + (c1[1] - c0[1]) * f),
+                        Math.round(c0[2] + (c1[2] - c0[2]) * f),
+                    ];
+                }
+            }
+            return COLOR_STOPS[COLOR_STOPS.length - 1][1];
+        }
+
+        // Build legend gradient
+        function buildLegend() {
+            const steps = 100;
+            const colors = [];
+            for (let i = 0; i <= steps; i++) {
+                const k = T_MIN + (T_MAX - T_MIN) * (i / steps);
+                const c = tempToColor(k);
+                colors.push(`rgb(${c[0]},${c[1]},${c[2]})`);
+            }
+            document.getElementById('legend-bar').style.background =
+                `linear-gradient(to right, ${colors.join(',')})`;
+        }
+
+        // ── Map init ──
+        function initMap() {
+            map = L.map('map', {
+                center: [20, 0],
+                zoom: 3,
+                minZoom: 2,
+                maxZoom: 12,
+                zoomControl: true,
+                worldCopyJump: true,
+            });
+
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; <a href="https://carto.com/">CARTO</a>',
+                subdomains: 'abcd',
+                maxZoom: 19,
+            }).addTo(map);
+
+            // Move zoom control to bottom-right
+            map.zoomControl.setPosition('bottomright');
+
+            map.on('click', onMapClick);
+        }
+
+        // ── WMS layers ──
+        const WMS_LAYERS = [
+            {
+                id: 'msg_fes:ir108',
+                name: 'Meteosat IR 10.8\u00b5m',
+                desc: 'Thermal infrared imagery',
+                defaultOn: true,
+            },
+            {
+                id: 'copernicus:daily_sentinel3ab_olci_l1_rgb_fulres',
+                name: 'Sentinel-3 Natural Color',
+                desc: 'OLCI daily composite',
+                defaultOn: false,
+            },
+            {
+                id: 'msg_fes:cth',
+                name: 'Cloud Top Height',
+                desc: 'MSG-derived cloud heights',
+                defaultOn: false,
+            },
+            {
+                id: 'msg_fes:fire',
+                name: 'Active Fire Monitoring',
+                desc: 'SEVIRI fire detection',
+                defaultOn: false,
+            },
+        ];
+
+        function initWMSLayers() {
+            const container = document.getElementById('wms-layers');
+            WMS_LAYERS.forEach(layer => {
+                const wmsLayer = L.tileLayer.wms('https://view.eumetsat.int/geoserver/wms', {
+                    layers: layer.id,
+                    format: 'image/png',
+                    transparent: true,
+                    opacity: 0.7,
+                    attribution: '&copy; EUMETSAT',
+                });
+
+                wmsOverlays[layer.id] = wmsLayer;
+
+                if (layer.defaultOn) {
+                    wmsLayer.addTo(map);
+                }
+
+                const itemDiv = document.createElement('div');
+                itemDiv.innerHTML = `
+                    <div class="layer-item">
+                        <input type="checkbox" id="wms-${layer.id}" ${layer.defaultOn ? 'checked' : ''}>
+                        <label for="wms-${layer.id}">${layer.name}</label>
+                    </div>
+                    <div class="layer-desc">${layer.desc}</div>
+                `;
+                container.appendChild(itemDiv);
+
+                const cb = itemDiv.querySelector('input');
+                cb.addEventListener('change', function() {
+                    if (this.checked) {
+                        wmsLayer.addTo(map);
+                    } else {
+                        map.removeLayer(wmsLayer);
+                    }
+                });
+            });
+        }
+
+        // ── ERA5 canvas overlay ──
+        const ERA5CanvasLayer = L.Layer.extend({
+            initialize: function(options) {
+                L.setOptions(this, options);
+                this._opacity = 0.7;
+            },
+
+            onAdd: function(map) {
+                this._map = map;
+                const pane = map.getPane('overlayPane');
+                this._canvas = L.DomUtil.create('canvas', 'era5-canvas', pane);
+                this._canvas.style.position = 'absolute';
+                this._canvas.style.pointerEvents = 'none';
+                this._canvas.style.opacity = this._opacity;
+                map.on('moveend', this._redraw, this);
+                map.on('zoomend', this._redraw, this);
+                map.on('resize', this._redraw, this);
+                this._redraw();
+                return this;
+            },
+
+            onRemove: function(map) {
+                L.DomUtil.remove(this._canvas);
+                map.off('moveend', this._redraw, this);
+                map.off('zoomend', this._redraw, this);
+                map.off('resize', this._redraw, this);
+            },
+
+            setOpacity: function(val) {
+                this._opacity = val;
+                if (this._canvas) this._canvas.style.opacity = val;
+            },
+
+            setData: function(data) {
+                this._data = data;
+                if (this._map) this._redraw();
+            },
+
+            _redraw: function() {
+                if (!this._data || !this._map) return;
+
+                const size = this._map.getSize();
+                const canvas = this._canvas;
+                canvas.width = size.x;
+                canvas.height = size.y;
+
+                const topLeft = this._map.containerPointToLayerPoint([0, 0]);
+                L.DomUtil.setPosition(canvas, topLeft);
+
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, size.x, size.y);
+
+                const data = this._data;
+                const bounds = this._map.getBounds();
+                const zoom = this._map.getZoom();
+
+                // Cell size in degrees
+                const dLat = Math.abs(data.lats[0] - data.lats[1]);
+                const dLon = Math.abs(data.lons[1] - data.lons[0]);
+
+                for (let i = 0; i < data.lats.length; i++) {
+                    const lat = data.lats[i];
+                    for (let j = 0; j < data.lons.length; j++) {
+                        const lon = data.lons[j];
+
+                        // Skip cells outside view
+                        if (lat + dLat < bounds.getSouth() || lat - dLat > bounds.getNorth()) continue;
+                        if (lon + dLon < bounds.getWest() || lon - dLon > bounds.getEast()) continue;
+
+                        const val = data.values[i][j];
+                        const color = tempToColor(val);
+
+                        const nw = this._map.latLngToContainerPoint([lat + dLat/2, lon - dLon/2]);
+                        const se = this._map.latLngToContainerPoint([lat - dLat/2, lon + dLon/2]);
+
+                        const w = Math.max(1, se.x - nw.x);
+                        const h = Math.max(1, se.y - nw.y);
+
+                        ctx.fillStyle = `rgb(${color[0]},${color[1]},${color[2]})`;
+                        ctx.fillRect(nw.x, nw.y, w, h);
+                    }
+                }
+            }
+        });
+
+        // ── Load ERA5 data ──
+        async function loadERA5(datasetId) {
+            const url = `/data/${datasetId}.json`;
+            try {
+                const res = await fetch(url);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                era5Data = await res.json();
+                if (era5Canvas) {
+                    era5Canvas.setData(era5Data);
+                }
+            } catch (err) {
+                console.error('Failed to load ERA5 data:', err);
+            }
+        }
+
+        // ── Map click handler ──
+        function onMapClick(e) {
+            const lat = e.latlng.lat;
+            const lon = e.latlng.lng;
+
+            if (clickMarker) {
+                map.removeLayer(clickMarker);
+            }
+
+            clickMarker = L.circleMarker(e.latlng, {
+                radius: 6,
+                color: '#38bdf8',
+                fillColor: '#38bdf8',
+                fillOpacity: 0.5,
+                weight: 2,
+            }).addTo(map);
+
+            const panel = document.getElementById('click-info');
+            panel.classList.add('active');
+
+            document.getElementById('info-lat').textContent = lat.toFixed(4) + '\u00b0';
+            document.getElementById('info-lon').textContent = lon.toFixed(4) + '\u00b0';
+
+            const dsId = document.getElementById('era5-dataset').value;
+            document.getElementById('info-dataset').textContent =
+                dsId === 'era5_t2m_20240101' ? 'Jan 2024' : 'Jul 2024';
+
+            if (era5Data) {
+                // Find nearest grid cell
+                const lats = era5Data.lats;
+                const lons = era5Data.lons;
+
+                let bestI = 0, bestDist = Infinity;
+                for (let i = 0; i < lats.length; i++) {
+                    const d = Math.abs(lats[i] - lat);
+                    if (d < bestDist) { bestDist = d; bestI = i; }
+                }
+
+                let bestJ = 0;
+                bestDist = Infinity;
+                // Normalize lon to match data range
+                let queryLon = lon;
+                while (queryLon < lons[0]) queryLon += 360;
+                while (queryLon > lons[lons.length-1] + 2.5) queryLon -= 360;
+
+                for (let j = 0; j < lons.length; j++) {
+                    const d = Math.abs(lons[j] - queryLon);
+                    if (d < bestDist) { bestDist = d; bestJ = j; }
+                }
+
+                const tempK = era5Data.values[bestI][bestJ];
+                const tempC = (tempK - 273.15).toFixed(1);
+
+                document.getElementById('info-temp').textContent = tempK.toFixed(1) + ' K';
+                document.getElementById('info-temp-c').textContent = tempC + ' \u00b0C';
+                document.getElementById('info-grid').textContent =
+                    `[${bestI},${bestJ}] (${lats[bestI].toFixed(1)}\u00b0, ${lons[bestJ].toFixed(1)}\u00b0)`;
+            } else {
+                document.getElementById('info-temp').textContent = 'No data';
+                document.getElementById('info-temp-c').textContent = '';
+                document.getElementById('info-grid').textContent = '--';
+            }
+        }
+
+        // ── Sidebar toggle ──
+        document.getElementById('sidebar-toggle').addEventListener('click', function() {
+            document.getElementById('sidebar').classList.toggle('collapsed');
+        });
+
+        // ── Init ──
+        async function init() {
+            buildLegend();
+            initMap();
+            initWMSLayers();
+
+            // Create ERA5 canvas layer
+            era5Canvas = new ERA5CanvasLayer();
+            era5Canvas.addTo(map);
+
+            // Load initial dataset
+            await loadERA5('era5_t2m_20240101');
+
+            // Dataset selector
+            document.getElementById('era5-dataset').addEventListener('change', function() {
+                loadERA5(this.value);
+            });
+
+            // ERA5 toggle
+            document.getElementById('era5-toggle').addEventListener('change', function() {
+                if (this.checked) {
+                    era5Canvas.addTo(map);
+                } else {
+                    map.removeLayer(era5Canvas);
+                }
+            });
+
+            // Opacity slider
+            document.getElementById('era5-opacity').addEventListener('input', function() {
+                era5Canvas.setOpacity(this.value / 100);
+            });
+
+            // Check API status
             try {
                 const res = await fetch('/api/v1/status');
                 if (res.ok) {
                     document.getElementById('statusDot').style.background = '#22c55e';
-                    document.getElementById('statusText').textContent = 'All systems operational';
+                    document.getElementById('statusText').textContent = 'Live';
                 }
             } catch {
                 document.getElementById('statusDot').style.background = '#f59e0b';
-                document.getElementById('statusText').textContent = 'API unreachable';
+                document.getElementById('statusText').textContent = 'API offline';
             }
+
+            // Hide loading overlay
+            const overlay = document.getElementById('loading-overlay');
+            overlay.classList.add('fade-out');
+            setTimeout(() => overlay.remove(), 600);
         }
 
-        async function loadDatasets() {
-            const container = document.getElementById('datasets');
-            try {
-                const res = await fetch('/api/v1/datasets');
-                const data = await res.json();
-                const datasets = data.datasets;
-
-                document.getElementById('datasetCount').textContent = datasets.length;
-
-                let totalVars = 0;
-                datasets.forEach(d => { totalVars += (d.variables || []).length; });
-                document.getElementById('variableCount').textContent = totalVars;
-
-                container.innerHTML = datasets.map(d => `
-                    <div class="card" onclick="showDetail('${d.id}')">
-                        <h4>${d.name}</h4>
-                        <p>${d.temporal_range} &middot; ${d.resolution}</p>
-                        <div>${(d.variables || []).slice(0, 4).map(v =>
-                            `<span class="tag">${v}</span>`
-                        ).join('')}${(d.variables || []).length > 4 ? `<span class="tag">+${d.variables.length - 4}</span>` : ''}</div>
-                        <div class="meta">
-                            <span>${d.resolution} resolution</span>
-                            <span>${(d.variables || []).length} variables</span>
-                        </div>
-                    </div>
-                `).join('');
-            } catch {
-                container.innerHTML = '<div class="loading">Could not load datasets from API</div>';
-            }
-        }
-
-        async function showDetail(id) {
-            const panel = document.getElementById('detailPanel');
-            try {
-                const res = await fetch(`/api/v1/datasets/${id}`);
-                const d = await res.json();
-                panel.innerHTML = `
-                    <button class="close-btn" onclick="document.getElementById('detailPanel').classList.remove('open')">Close</button>
-                    <h4>${d.name}</h4>
-                    <p style="color:#94a3b8;margin-bottom:1rem;font-size:0.9rem">${d.description || ''}</p>
-                    <dl class="detail-grid">
-                        <dt>ID</dt><dd>${d.id}</dd>
-                        <dt>Resolution</dt><dd>${d.resolution}</dd>
-                        <dt>Time Range</dt><dd>${d.temporal_range}</dd>
-                        <dt>Format</dt><dd>${d.format || 'NetCDF / GRIB'}</dd>
-                        <dt>Updates</dt><dd>${d.update_frequency || 'N/A'}</dd>
-                        <dt>Variables</dt><dd>${(d.variables || []).join(', ')}</dd>
-                        ${d.pressure_levels ? `<dt>Pressure Levels</dt><dd>${d.pressure_levels.join(', ')} hPa</dd>` : ''}
-                    </dl>
-                `;
-                panel.classList.add('open');
-                panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            } catch {
-                panel.innerHTML = '<p>Could not load dataset details</p>';
-                panel.classList.add('open');
-            }
-        }
-
-        checkStatus();
-        loadDatasets();
+        init();
+    })();
     </script>
 </body>
 </html>

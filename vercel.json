@@ -11,6 +11,13 @@
   ],
   "routes": [
     { "src": "/api/(.*)", "dest": "/api/index.py" },
+    {
+      "src": "/data/(.*)",
+      "dest": "/public/data/$1",
+      "headers": {
+        "Cache-Control": "public, max-age=86400, s-maxage=604800"
+      }
+    },
     { "src": "/(.*)", "dest": "/public/$1" }
   ]
 }
