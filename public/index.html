@@ -423,6 +423,13 @@
                 worldCopyJump: true,
             });
 
+            // Custom panes for layer ordering:
+            // base tiles (200) < ERA5 grid (250) < WMS satellite (350) < overlays (400)
+            map.createPane('era5Pane');
+            map.getPane('era5Pane').style.zIndex = 250;
+            map.createPane('wmsPane');
+            map.getPane('wmsPane').style.zIndex = 350;
+
             L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
                 attribution: '&copy; <a href="https://carto.com/">CARTO</a>',
                 subdomains: 'abcd',
@@ -471,6 +478,7 @@
                     format: 'image/png',
                     transparent: true,
                     opacity: 0.7,
+                    pane: 'wmsPane',
                     attribution: '&copy; EUMETSAT',
                 });
 
@@ -510,7 +518,7 @@
 
             onAdd: function(map) {
                 this._map = map;
-                const pane = map.getPane('overlayPane');
+                const pane = map.getPane('era5Pane');
                 this._canvas = L.DomUtil.create('canvas', 'era5-canvas', pane);
                 this._canvas.style.position = 'absolute';
                 this._canvas.style.pointerEvents = 'none';
