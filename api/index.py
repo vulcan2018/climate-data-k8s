@@ -45,12 +45,12 @@ WMS_LAYERS = [
         "legend_url": "https://view.eumetsat.int/geoserver/wms?service=WMS&request=GetLegendGraphic&layer=msg_fes:cth&format=image/png",
     },
     {
-        "id": "msg_fes:fire",
-        "name": "Active Fire Monitoring",
-        "description": "Active fire detection from Meteosat SEVIRI instrument",
+        "id": "mtg_fd:rgb_firetemperature",
+        "name": "Fire Temperature RGB",
+        "description": "Fire intensity detection from MTG-I at 500m resolution, color-coded by intensity",
         "wms_url": "https://view.eumetsat.int/geoserver/wms",
         "default_on": False,
-        "legend_url": "https://view.eumetsat.int/geoserver/wms?service=WMS&request=GetLegendGraphic&layer=msg_fes:fire&format=image/png",
+        "legend_url": None,
     },
 ]
 
