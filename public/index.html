@@ -555,32 +555,40 @@
 
                 const data = this._data;
                 const bounds = this._map.getBounds();
-                const zoom = this._map.getZoom();
 
                 // Cell size in degrees
                 const dLat = Math.abs(data.lats[0] - data.lats[1]);
                 const dLon = Math.abs(data.lons[1] - data.lons[0]);
 
+                // Determine world copies needed to fill the view
+                const west = bounds.getWest();
+                const east = bounds.getEast();
+                const copyStart = Math.floor((west + 180) / 360);
+                const copyEnd = Math.floor((east + 180) / 360);
+
                 for (let i = 0; i < data.lats.length; i++) {
                     const lat = data.lats[i];
-                    for (let j = 0; j < data.lons.length; j++) {
-                        const lon = data.lons[j];
+                    if (lat + dLat < bounds.getSouth() || lat - dLat > bounds.getNorth()) continue;
 
-                        // Skip cells outside view
-                        if (lat + dLat < bounds.getSouth() || lat - dLat > bounds.getNorth()) continue;
-                        if (lon + dLon < bounds.getWest() || lon - dLon > bounds.getEast()) continue;
+                    for (let copy = copyStart; copy <= copyEnd; copy++) {
+                        const lonOffset = copy * 360;
+                        for (let j = 0; j < data.lons.length; j++) {
+                            const lon = data.lons[j] + lonOffset;
 
-                        const val = data.values[i][j];
-                        const color = tempToColor(val);
+                            if (lon + dLon < west || lon - dLon > east) continue;
 
-                        const nw = this._map.latLngToContainerPoint([lat + dLat/2, lon - dLon/2]);
-                        const se = this._map.latLngToContainerPoint([lat - dLat/2, lon + dLon/2]);
+                            const val = data.values[i][j];
+                            const color = tempToColor(val);
 
-                        const w = Math.max(1, se.x - nw.x);
-                        const h = Math.max(1, se.y - nw.y);
+                            const nw = this._map.latLngToContainerPoint([lat + dLat/2, lon - dLon/2]);
+                            const se = this._map.latLngToContainerPoint([lat - dLat/2, lon + dLon/2]);
 
-                        ctx.fillStyle = `rgb(${color[0]},${color[1]},${color[2]})`;
-                        ctx.fillRect(nw.x, nw.y, w, h);
+                            const w = Math.max(1, se.x - nw.x);
+                            const h = Math.max(1, se.y - nw.y);
+
+                            ctx.fillStyle = `rgb(${color[0]},${color[1]},${color[2]})`;
+                            ctx.fillRect(nw.x, nw.y, w, h);
+                        }
                     }
                 }
             }
