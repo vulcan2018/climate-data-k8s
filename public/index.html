@@ -266,6 +266,12 @@
         @keyframes spin { to { transform: rotate(360deg); } }
         .loading-text { color: #64748b; font-size: 0.85rem; }
 
+        /* Fire overlay: no smoothing so pixels stay sharp when zoomed */
+        .fire-overlay {
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+
         /* Leaflet overrides */
         .leaflet-control-zoom { border: 1px solid #334155 !important; }
         .leaflet-control-zoom a {
@@ -516,11 +522,12 @@
             const fireUrl = 'https://view.eumetsat.int/geoserver/wms?SERVICE=WMS&VERSION=1.1.1'
                 + '&REQUEST=GetMap&LAYERS=msg_fes:fire&STYLES=msg_fire'
                 + '&FORMAT=image/png&TRANSPARENT=true&SRS=EPSG:4326'
-                + '&BBOX=-77,-77,77,77&WIDTH=2048&HEIGHT=2048';
+                + '&BBOX=-77,-77,77,77&WIDTH=512&HEIGHT=512';
             const fireBounds = [[-77, -77], [77, 77]];
             const fireLayer = L.imageOverlay(fireUrl, fireBounds, {
-                opacity: 0.85,
+                opacity: 1.0,
                 pane: 'wmsPane',
+                className: 'fire-overlay',
             });
 
             wmsOverlays[FIRE_LAYER.id] = fireLayer;
