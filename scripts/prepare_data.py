@@ -96,23 +96,25 @@ def download_real(year: int, month: int, day: int, output_path: str):
     c = cdsapi.Client()
     nc_path = output_path.replace(".json", ".nc")
 
-    c.retrieve(
+    result = c.retrieve(
         "reanalysis-era5-single-levels",
         {
-            "product_type": "reanalysis",
-            "variable": "2m_temperature",
-            "year": str(year),
-            "month": f"{month:02d}",
-            "day": f"{day:02d}",
-            "time": "12:00",
-            "grid": "2.5/2.5",
-            "format": "netcdf",
+            "product_type": ["reanalysis"],
+            "variable": ["2m_temperature"],
+            "year": [str(year)],
+            "month": [f"{month:02d}"],
+            "day": [f"{day:02d}"],
+            "time": ["12:00"],
+            "data_format": "netcdf",
+            "download_format": "unarchived",
         },
-        nc_path,
     )
+    result.download(nc_path)
 
     ds = netCDF4.Dataset(nc_path)
-    t2m = ds.variables["t2m"][0, :, :]  # first time step
+    # Variable name may be 't2m' or 'VAR_2T' depending on CDS version
+    var_name = "t2m" if "t2m" in ds.variables else list(ds.variables.keys())[-1]
+    t2m = ds.variables[var_name][0, :, :]  # first time step
     lats_nc = ds.variables["latitude"][:]
     lons_nc = ds.variables["longitude"][:]
     ds.close()
