@@ -38,5 +38,5 @@ charts/
 docker-compose.override.yml
 
 # Markdown
-*.md
+# *.md
 .vercel
