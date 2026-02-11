@@ -1,0 +1,25 @@
+apiVersion: v2
+name: arco-service
+description: ARCO Data Service for ECMWF DSS - Helm Chart
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+
+keywords:
+  - arco
+  - zarr
+  - climate
+  - ecmwf
+  - kubernetes
+
+home: https://github.com/vulcan2018/climate-data-k8s
+sources:
+  - https://github.com/vulcan2018/climate-data-pipeline
+
+maintainers:
+  - name: FIRA Software Ltd
+    email: info@firasoftware.com
+    url: https://firasoftware.com
+
+annotations:
+  category: Data Services

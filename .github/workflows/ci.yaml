@@ -1,0 +1,227 @@
+# CI/CD Pipeline for ARCO Service
+# FIRA Software Ltd - CJS2_220b_bis Demonstration
+#
+# This workflow demonstrates the CI/CD approach proposed for the ARCO tender
+
+name: ARCO Service CI/CD
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+env:
+  PYTHON_VERSION: '3.11'
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}/arco-service
+
+jobs:
+  # Code quality checks
+  lint:
+    name: Code Quality
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          pip install ruff black mypy
+
+      - name: Run ruff linter
+        run: ruff check scripts/
+
+      - name: Check formatting with black
+        run: black --check scripts/
+
+      - name: Type check with mypy
+        run: mypy scripts/ --ignore-missing-imports
+
+  # Run tests
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          pip install -r scripts/requirements.txt
+          pip install pytest pytest-cov
+
+      - name: Run tests
+        run: |
+          pytest tests/ --cov=src --cov-report=xml --cov-report=term-missing
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage.xml
+          fail_ci_if_error: false
+
+  # Run benchmarks
+  benchmark:
+    name: Performance Benchmarks
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: pip install -r scripts/requirements.txt
+
+      - name: Run benchmarks
+        run: |
+          python scripts/benchmark_suite.py \
+            --create-data small \
+            --iterations 10 \
+            --output-dir benchmark_results
+
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: benchmark_results/
+
+      - name: Check benchmark pass
+        run: |
+          if grep -q '"overall_pass": false' benchmark_results/benchmark_report.json; then
+            echo "Benchmark failed - latency target not met"
+            exit 1
+          fi
+
+  # Build container image
+  build:
+    name: Build Container
+    runs-on: ubuntu-latest
+    needs: test
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix=
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # Helm chart linting
+  helm-lint:
+    name: Helm Chart Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: v3.12.0
+
+      - name: Lint Helm chart
+        run: helm lint k8s/arco-service/
+
+      - name: Template validation
+        run: |
+          helm template test-release k8s/arco-service/ \
+            --debug \
+            --dry-run
+
+  # Deploy to staging (on main branch)
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [build, helm-lint, benchmark]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v3
+
+      - name: Configure kubectl
+        run: |
+          echo "Would configure kubectl with staging cluster credentials"
+          # In real deployment:
+          # echo "${{ secrets.KUBE_CONFIG_STAGING }}" | base64 -d > ~/.kube/config
+
+      - name: Deploy to staging
+        run: |
+          echo "Would deploy to staging with:"
+          echo "helm upgrade --install arco-service k8s/arco-service/ -f k8s/arco-service/values.yaml --set image.tag=${{ github.sha }}"
+          # In real deployment, remove echo and execute
+
+  # Integration tests on staging
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: deploy-staging
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run integration tests
+        run: |
+          echo "Would run integration tests against staging environment"
+          # pytest tests/integration/ --base-url=https://arco-staging.example.ecmwf.int
+
+  # Production deployment (manual approval)
+  deploy-prod:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: integration-tests
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to production
+        run: |
+          echo "Would deploy to production"
+          # helm upgrade --install arco-service k8s/arco-service/ \
+          #   -f k8s/arco-service/values.yaml \
+          #   -f k8s/arco-service/values-prod.yaml \
+          #   --set image.tag=${{ github.sha }}
